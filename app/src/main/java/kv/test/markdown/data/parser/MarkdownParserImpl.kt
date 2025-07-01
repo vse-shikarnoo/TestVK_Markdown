@@ -21,9 +21,10 @@ class MarkdownParserImpl : MarkdownParser {
         }
         while (i < lines.size) {
             val line = lines[i]
-            val headerMatch = Regex("^(#{1,6})\\s+(.*)").find(line)
-            val imageMatch = Regex("!\\[(.*?)\\]\\((.*?)\\)").find(line)
+            val headerMatch = Regex("""^(#{1,6})\s+(.*)""").find(line)
+            val imageMatch = Regex("""!\[(.*?)\]\((.*?)\)""").find(line)
             val isTableRow = line.trim().startsWith("|") && line.trim().endsWith("|")
+            val listMatch = Regex("""^\s*([-*+])\s+(.*)""").find(line)
             // --- Таблица ---
             if (isTableRow && i + 1 < lines.size && Regex("""^\s*\|?\s*:?-+.*\|""").containsMatchIn(lines[i + 1])) {
                 flushParagraph()
@@ -38,6 +39,22 @@ class MarkdownParserImpl : MarkdownParser {
                     i++
                 }
                 blocks.add(MarkdownBlock.Table(header, rows))
+                continue
+            }
+            // --- Список ---
+            if (listMatch != null) {
+                flushParagraph()
+                val items = mutableListOf<List<MarkdownInline>>()
+                while (i < lines.size) {
+                    val m = Regex("""^\s*([-*+])\s+(.*)""").find(lines[i])
+                    if (m != null) {
+                        items.add(parseInlines(m.groupValues[2]))
+                        i++
+                    } else {
+                        break
+                    }
+                }
+                blocks.add(MarkdownBlock.ListBlock(items))
                 continue
             }
             // --- Изображение ---
@@ -107,11 +124,27 @@ class MarkdownParserImpl : MarkdownParser {
                         break
                     }
                 }
+                text.startsWith("[", i) -> {
+                    val endText = text.indexOf("]", i + 1)
+                    if (endText != -1 && endText + 1 < text.length && text[endText + 1] == '(') {
+                        val endUrl = text.indexOf(")", endText + 2)
+                        if (endUrl != -1) {
+                            val linkText = text.substring(i + 1, endText)
+                            val linkUrl = text.substring(endText + 2, endUrl)
+                            result.add(MarkdownInline.Link(linkText, linkUrl))
+                            i = endUrl + 1
+                            continue
+                        }
+                    }
+                    result.add(MarkdownInline.Text("["))
+                    i++
+                }
                 else -> {
                     val next = listOf(
                         text.indexOf("**", i).takeIf { it >= 0 } ?: text.length,
                         text.indexOf("*", i).takeIf { it >= 0 } ?: text.length,
-                        text.indexOf("~~", i).takeIf { it >= 0 } ?: text.length
+                        text.indexOf("~~", i).takeIf { it >= 0 } ?: text.length,
+                        text.indexOf("[", i).takeIf { it >= 0 } ?: text.length
                     ).minOrNull() ?: text.length
                     result.add(MarkdownInline.Text(text.substring(i, next)))
                     i = next

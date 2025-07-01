@@ -5,6 +5,7 @@ sealed class MarkdownBlock {
     data class Paragraph(val inlines: List<MarkdownInline>) : MarkdownBlock()
     data class Table(val header: List<String>, val rows: List<List<String>>) : MarkdownBlock()
     data class Image(val alt: String, val url: String) : MarkdownBlock()
+    data class ListBlock(val items: kotlin.collections.List<kotlin.collections.List<MarkdownInline>>) : MarkdownBlock()
 }
 
 sealed class MarkdownInline {
@@ -12,4 +13,5 @@ sealed class MarkdownInline {
     data class Italic(val text: String) : MarkdownInline()
     data class Strikethrough(val text: String) : MarkdownInline()
     data class Text(val text: String) : MarkdownInline()
+    data class Link(val text: String, val url: String) : MarkdownInline()
 } 
