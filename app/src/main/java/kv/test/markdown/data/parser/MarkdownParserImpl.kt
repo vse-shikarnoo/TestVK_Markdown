@@ -28,13 +28,13 @@ class MarkdownParserImpl : MarkdownParser {
             // --- Таблица ---
             if (isTableRow && i + 1 < lines.size && Regex("""^\s*\|?\s*:?-+.*\|""").containsMatchIn(lines[i + 1])) {
                 flushParagraph()
-                val header = line.trim().trim('|').split("|").map { it.trim() }
+                val header = line.trim().trim('|').split("|").map { parseInlines(it.trim()) }
                 i++
                 // skip separator
                 i++
-                val rows = mutableListOf<List<String>>()
+                val rows = mutableListOf<List<List<MarkdownInline>>>()
                 while (i < lines.size && lines[i].trim().startsWith("|") && lines[i].trim().endsWith("|")) {
-                    val row = lines[i].trim().trim('|').split("|").map { it.trim() }
+                    val row = lines[i].trim().trim('|').split("|").map { parseInlines(it.trim()) }
                     rows.add(row)
                     i++
                 }
@@ -44,17 +44,9 @@ class MarkdownParserImpl : MarkdownParser {
             // --- Список ---
             if (listMatch != null) {
                 flushParagraph()
-                val items = mutableListOf<List<MarkdownInline>>()
-                while (i < lines.size) {
-                    val m = Regex("""^\s*([-*+])\s+(.*)""").find(lines[i])
-                    if (m != null) {
-                        items.add(parseInlines(m.groupValues[2]))
-                        i++
-                    } else {
-                        break
-                    }
-                }
-                blocks.add(MarkdownBlock.ListBlock(items))
+                val (listBlock, nextIndex) = parseList(lines, i, getIndent(lines[i]))
+                blocks.add(listBlock)
+                i = nextIndex
                 continue
             }
             // --- Изображение ---
@@ -152,5 +144,42 @@ class MarkdownParserImpl : MarkdownParser {
             }
         }
         return result
+    }
+
+    private fun getIndent(line: String): Int {
+        return line.indexOfFirst { !it.isWhitespace() }.takeIf { it >= 0 } ?: 0
+    }
+
+    private fun parseList(lines: List<String>, start: Int, baseIndent: Int): Pair<MarkdownBlock.ListBlock, Int> {
+        val items = mutableListOf<MarkdownBlock.ListItem>()
+        var i = start
+        while (i < lines.size) {
+            val line = lines[i]
+            val indent = getIndent(line)
+            val m = Regex("""^\s*([-*+])\s+(.*)""").find(line)
+            if (m != null && indent == baseIndent) {
+                val content = m.groupValues[2]
+                // Проверяем, есть ли вложенный список
+                var sublist: MarkdownBlock.ListBlock? = null
+                val next = i + 1
+                if (next < lines.size) {
+                    val nextIndent = getIndent(lines[next])
+                    val nextMatch = Regex("""^\s*([-*+])\s+(.*)""").find(lines[next])
+                    if (nextMatch != null && nextIndent > baseIndent) {
+                        val (sub, newIndex) = parseList(lines, next, nextIndent)
+                        sublist = sub
+                        i = newIndex - 1
+                    }
+                }
+                items.add(MarkdownBlock.ListItem(parseInlines(content), sublist))
+                i++
+            } else if (m != null && indent > baseIndent) {
+                // вложенный список, но уже обработан выше
+                i++
+            } else {
+                break
+            }
+        }
+        return MarkdownBlock.ListBlock(items) to i
     }
 } 

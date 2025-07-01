@@ -15,17 +15,18 @@
         android:inputType="textMultiLine"
         android:background="@android:drawable/edit_text"
         android:minLines="10"
-        android:scrollbars="vertical"
-        android:layout_marginBottom="16dp"/>
+        android:scrollbars="vertical"/>
 
     <Button
         android:id="@+id/buttonSave"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Сохранить"/>
+
     <Button
         android:id="@+id/buttonSaveAs"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Сохранить как..."/>
+        android:text="Сохранить как..."
+        android:layout_marginTop="8dp"/>
 </LinearLayout> 

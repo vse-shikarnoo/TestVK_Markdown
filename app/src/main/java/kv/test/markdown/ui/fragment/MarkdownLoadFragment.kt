@@ -17,6 +17,7 @@ import kv.test.markdown.R
 import kv.test.markdown.ui.viewmodel.MarkdownLoadViewModel
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.concurrent.thread
@@ -84,7 +85,7 @@ class MarkdownLoadFragment : Fragment() {
             val inputStream = requireContext().contentResolver.openInputStream(uri)
             val text = inputStream?.bufferedReader().use { it?.readText() } ?: ""
             viewModel.setMarkdown(text)
-            openViewFragment(text)
+            openViewFragment(text, uri)
         } catch (e: Exception) {
             viewModel.setError("Ошибка чтения файла")
         }
@@ -100,9 +101,18 @@ class MarkdownLoadFragment : Fragment() {
                 val reader = BufferedReader(InputStreamReader(conn.inputStream))
                 val text = reader.readText()
                 reader.close()
+                // Сохраняем во внутреннее хранилище
+                val fileName = "downloaded_${System.currentTimeMillis()}.md"
+                val file = File(requireContext().filesDir, fileName)
+                file.writeText(text)
+                val fileUri = androidx.core.content.FileProvider.getUriForFile(
+                    requireContext(),
+                    requireContext().packageName + ".provider",
+                    file
+                )
                 requireActivity().runOnUiThread {
                     viewModel.setMarkdown(text)
-                    openViewFragment(text)
+                    openViewFragment(text, fileUri)
                 }
             } catch (e: Exception) {
                 requireActivity().runOnUiThread {
@@ -112,9 +122,10 @@ class MarkdownLoadFragment : Fragment() {
         }
     }
 
-    private fun openViewFragment(markdown: String) {
+    private fun openViewFragment(markdown: String, uri: Uri? = null) {
+        val fragment = MarkdownViewFragment.newInstance(markdown, uri)
         parentFragmentManager.beginTransaction()
-            .replace(R.id.fragmentContainer, MarkdownViewFragment.newInstance(markdown))
+            .replace(R.id.fragmentContainer, fragment)
             .addToBackStack(null)
             .commit()
     }

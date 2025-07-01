@@ -33,7 +33,7 @@ class MarkdownView @JvmOverloads constructor(
                 is MarkdownBlock.Paragraph -> createParagraph(block)
                 is MarkdownBlock.Table -> createTable(block)
                 is MarkdownBlock.Image -> createImage(block)
-                is MarkdownBlock.ListBlock -> createList(block)
+                is MarkdownBlock.ListBlock -> createList(block, 0)
             }
             // Добавляем вертикальный отступ между блоками
             val params = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
@@ -110,7 +110,7 @@ class MarkdownView @JvmOverloads constructor(
         val headerRow = TableRow(context)
         for (cell in block.header) {
             val tv = TextView(context)
-            tv.text = cell
+            tv.text = buildSpannable(cell)
             tv.setTypeface(null, Typeface.BOLD)
             tv.setPadding(8, 4, 8, 4)
             headerRow.addView(tv)
@@ -121,7 +121,7 @@ class MarkdownView @JvmOverloads constructor(
             val tableRow = TableRow(context)
             for (cell in row) {
                 val tv = TextView(context)
-                tv.text = cell
+                tv.text = buildSpannable(cell)
                 tv.setPadding(8, 4, 8, 4)
                 tableRow.addView(tv)
             }
@@ -151,18 +151,22 @@ class MarkdownView @JvmOverloads constructor(
         return imageView
     }
 
-    private fun createList(block: MarkdownBlock.ListBlock): View {
+    private fun createList(block: MarkdownBlock.ListBlock, level: Int = 0): View {
         val layout = LinearLayout(context)
         layout.orientation = VERTICAL
         for (item in block.items) {
             val tv = TextView(context)
-            tv.text = buildSpannable(item)
-            tv.setPadding(32, 0, 0, 0)
+            val spannable = buildSpannable(item.inlines)
+            tv.text = spannable
+            tv.setPadding(32 + level * 32, 0, 0, 0)
             tv.text = "• " + tv.text
             tv.setLineSpacing(0f, 1.1f)
             tv.setOnClickListener(null)
             tv.movementMethod = android.text.method.LinkMovementMethod.getInstance()
             layout.addView(tv)
+            if (item.sublist != null) {
+                layout.addView(createList(item.sublist, level + 1))
+            }
         }
         return layout
     }

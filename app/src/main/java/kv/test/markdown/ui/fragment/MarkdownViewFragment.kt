@@ -1,5 +1,6 @@
 package kv.test.markdown.ui.fragment
 
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -27,6 +28,7 @@ class MarkdownViewFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val markdown = arguments?.getString(ARG_MARKDOWN_TEXT) ?: ""
+        val fileUri = arguments?.getParcelable<Uri>(ARG_FILE_URI)
         viewModel.setMarkdown(markdown)
         val markdownView = view.findViewById<MarkdownView>(R.id.markdownView)
         viewModel.blocks.observe(viewLifecycleOwner) { blocks ->
@@ -36,7 +38,7 @@ class MarkdownViewFragment : Fragment() {
         buttonEdit.setOnClickListener {
             parentFragmentManager.beginTransaction()
                 .replace(R.id.fragmentContainer,
-                    MarkdownEditFragment.newInstance(viewModel.markdown.value ?: "")
+                    MarkdownEditFragment.newInstance(viewModel.markdown.value ?: "", fileUri)
                 )
                 .addToBackStack(null)
                 .commit()
@@ -45,10 +47,12 @@ class MarkdownViewFragment : Fragment() {
 
     companion object {
         private const val ARG_MARKDOWN_TEXT = "markdown_text"
-        fun newInstance(markdown: String): MarkdownViewFragment {
+        private const val ARG_FILE_URI = "file_uri"
+        fun newInstance(markdown: String, fileUri: Uri? = null): MarkdownViewFragment {
             val fragment = MarkdownViewFragment()
             val args = Bundle()
             args.putString(ARG_MARKDOWN_TEXT, markdown)
+            if (fileUri != null) args.putParcelable(ARG_FILE_URI, fileUri)
             fragment.arguments = args
             return fragment
         }
